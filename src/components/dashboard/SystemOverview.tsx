@@ -1,6 +1,46 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Panel from "@/components/shared/Panel";
+import { supabase } from "@/lib/supabase";
 
 export default function SystemOverview() {
+  const [healthy, setHealthy] = useState<number | null>(null);
+  const [alerts, setAlerts] = useState<number | null>(null);
+  const [syncs, setSyncs] = useState<number | null>(null);
+
+  useEffect(() => {
+    async function fetchData() {
+      const [botsRes, eventsRes, serversRes] = await Promise.all([
+        supabase.from("bots").select("status"),
+        supabase.from("activity_events").select("level"),
+        supabase.from("servers").select("status"),
+      ]);
+
+      const bots = botsRes.data ?? [];
+      const events = eventsRes.data ?? [];
+      const servers = serversRes.data ?? [];
+
+      const onlineBots = bots.filter((b) => b.status === "En ligne").length;
+      const connectedServers = servers.filter((s) => s.status === "Connecte").length;
+      setHealthy(onlineBots + connectedServers);
+
+      const alertCount = events.filter(
+        (e) => e.level === "Critique" || e.level === "Alerte"
+      ).length;
+      setAlerts(alertCount);
+
+      const syncCount = servers.filter(
+        (s) => s.status === "Synchronisation"
+      ).length;
+      setSyncs(syncCount);
+    }
+    fetchData();
+  }, []);
+
+  const fmt = (n: number | null) =>
+    n === null ? "..." : String(n).padStart(2, "0");
+
   return (
     <Panel className="mt-6">
       <div className="flex flex-col gap-6">
@@ -30,7 +70,7 @@ export default function SystemOverview() {
               Services sains
             </p>
             <p className="mt-3 text-3xl font-bold" style={{ color: "#34d399" }}>
-              12
+              {fmt(healthy)}
             </p>
           </div>
 
@@ -45,7 +85,7 @@ export default function SystemOverview() {
               Alertes actives
             </p>
             <p className="mt-3 text-3xl font-bold" style={{ color: "#f87171" }}>
-              02
+              {fmt(alerts)}
             </p>
           </div>
 
@@ -60,7 +100,7 @@ export default function SystemOverview() {
               Synchronisations
             </p>
             <p className="mt-3 text-3xl font-bold" style={{ color: "#67e8f9" }}>
-              08
+              {fmt(syncs)}
             </p>
           </div>
         </div>
