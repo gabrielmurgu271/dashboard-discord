@@ -13,6 +13,13 @@ type Bot = {
   server: string;
 };
 
+type NewBot = {
+  name: string;
+  status: string;
+  type: string;
+  server: string;
+};
+
 function getStatusStyle(status: string) {
   if (status === "En ligne") {
     return { border: "1px solid rgba(16, 185, 129, 0.45)", background: "rgba(16, 185, 129, 0.14)", color: "#86efac" };
@@ -44,9 +51,19 @@ function getBotIcon(type: string) {
   return "🤖";
 }
 
+const defaultNewBot: NewBot = {
+  name: "",
+  status: "En ligne",
+  type: "Moderation",
+  server: "",
+};
+
 export default function BotsSection() {
   const [bots, setBots] = useState<Bot[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [newBot, setNewBot] = useState<NewBot>(defaultNewBot);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     async function fetchBots() {
@@ -72,6 +89,19 @@ export default function BotsSection() {
     };
   }, []);
 
+  async function handleAddBot() {
+    if (!newBot.name.trim() || !newBot.server.trim()) return;
+    setSaving(true);
+    await supabase.from("bots").insert([newBot]);
+    setNewBot(defaultNewBot);
+    setShowForm(false);
+    setSaving(false);
+  }
+
+  async function handleDeleteBot(id: string) {
+    await supabase.from("bots").delete().eq("id", id);
+  }
+
   const onlineCount = bots.filter((b) => b.status === "En ligne").length;
   const maintenanceCount = bots.filter((b) => b.status === "Maintenance").length;
   const offlineCount = bots.filter((b) => b.status === "Hors ligne").length;
@@ -92,14 +122,86 @@ export default function BotsSection() {
               leur statut, leur role principal et leur serveur de reference.
             </p>
           </div>
-          <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-300">
-            <span
-              className="h-2 w-2 rounded-full"
-              style={{ background: "rgba(16, 185, 129, 0.9)", boxShadow: "0 0 6px rgba(16, 185, 129, 0.6)" }}
-            />
-            {loading ? "..." : `${bots.length} bots suivis`}
+
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-300">
+              <span className="h-2 w-2 rounded-full" style={{ background: "rgba(16, 185, 129, 0.9)", boxShadow: "0 0 6px rgba(16, 185, 129, 0.6)" }} />
+              {loading ? "..." : `${bots.length} bots suivis`}
+            </div>
+
+            <button
+              onClick={() => setShowForm(!showForm)}
+              className="rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-zinc-800"
+            >
+              {showForm ? "Annuler" : "+ Ajouter"}
+            </button>
           </div>
         </div>
+
+        {showForm && (
+          <div className="mt-6 grid gap-4 rounded-2xl border border-zinc-700 bg-zinc-950 p-5">
+            <p className="text-sm font-semibold text-white">Nouveau bot</p>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-xs text-zinc-400">Nom du bot</label>
+                <input
+                  type="text"
+                  value={newBot.name}
+                  onChange={(e) => setNewBot({ ...newBot, name: e.target.value })}
+                  placeholder="Ex: Moderation Bot"
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none focus:border-zinc-500"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs text-zinc-400">Serveur principal</label>
+                <input
+                  type="text"
+                  value={newBot.server}
+                  onChange={(e) => setNewBot({ ...newBot, server: e.target.value })}
+                  placeholder="Ex: Atlas Community"
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none focus:border-zinc-500"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs text-zinc-400">Type</label>
+                <select
+                  value={newBot.type}
+                  onChange={(e) => setNewBot({ ...newBot, type: e.target.value })}
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-zinc-500"
+                >
+                  <option>Moderation</option>
+                  <option>Journalisation</option>
+                  <option>Divertissement</option>
+                  <option>Onboarding</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs text-zinc-400">Statut</label>
+                <select
+                  value={newBot.status}
+                  onChange={(e) => setNewBot({ ...newBot, status: e.target.value })}
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-zinc-500"
+                >
+                  <option>En ligne</option>
+                  <option>Maintenance</option>
+                  <option>Hors ligne</option>
+                </select>
+              </div>
+            </div>
+
+            <button
+              onClick={handleAddBot}
+              disabled={saving || !newBot.name.trim() || !newBot.server.trim()}
+              className="mt-2 w-full rounded-xl border border-zinc-600 bg-zinc-800 py-3 text-sm font-semibold text-white transition hover:bg-zinc-700 disabled:opacity-40"
+            >
+              {saving ? "Enregistrement..." : "Enregistrer le bot"}
+            </button>
+          </div>
+        )}
       </Panel>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
@@ -129,22 +231,29 @@ export default function BotsSection() {
         ) : (
           <div className="space-y-4">
             {bots.map((bot) => (
-              <InfoRow
-                key={bot.id}
-                title={bot.name}
-                description={`Type : ${bot.type} - Serveur principal : ${bot.server}`}
-                leading={getBotIcon(bot.type)}
-                meta={
-                  <>
-                    <span className="rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1 text-sm text-zinc-300">
-                      {bot.type}
-                    </span>
-                    <span className="rounded-full px-3 py-1 text-sm font-medium" style={getStatusStyle(bot.status)}>
-                      {bot.status}
-                    </span>
-                  </>
-                }
-              />
+              <div key={bot.id} className="group relative">
+                <InfoRow
+                  title={bot.name}
+                  description={`Type : ${bot.type} - Serveur principal : ${bot.server}`}
+                  leading={getBotIcon(bot.type)}
+                  meta={
+                    <>
+                      <span className="rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1 text-sm text-zinc-300">
+                        {bot.type}
+                      </span>
+                      <span className="rounded-full px-3 py-1 text-sm font-medium" style={getStatusStyle(bot.status)}>
+                        {bot.status}
+                      </span>
+                      <button
+                        onClick={() => handleDeleteBot(bot.id)}
+                        className="rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-sm font-medium text-red-400 opacity-0 transition group-hover:opacity-100"
+                      >
+                        Supprimer
+                      </button>
+                    </>
+                  }
+                />
+              </div>
             ))}
           </div>
         )}
