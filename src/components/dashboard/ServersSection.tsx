@@ -54,7 +54,19 @@ export default function ServersSection() {
       if (data) setServers(data);
       setLoading(false);
     }
+
     fetchServers();
+
+    const channel = supabase
+      .channel("servers-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "servers" }, () => {
+        fetchServers();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const connecteCount = servers.filter((s) => s.status === "Connecte").length;
@@ -76,7 +88,11 @@ export default function ServersSection() {
               Cette section presente les serveurs suivis par le dashboard.
             </p>
           </div>
-          <div className="rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-300">
+          <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-300">
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{ background: "rgba(16, 185, 129, 0.9)", boxShadow: "0 0 6px rgba(16, 185, 129, 0.6)" }}
+            />
             {loading ? "..." : `${servers.length} serveurs suivis`}
           </div>
         </div>
@@ -89,14 +105,12 @@ export default function ServersSection() {
             {loading ? "..." : connecteCount}
           </p>
         </div>
-
         <div className="rounded-2xl p-5" style={{ border: syncStyle.border, background: syncStyle.background }}>
           <p className="text-sm font-medium" style={{ color: syncStyle.labelColor }}>Synchronisation</p>
           <p className="mt-3 text-3xl font-bold" style={{ color: syncStyle.valueColor }}>
             {loading ? "..." : syncCount}
           </p>
         </div>
-
         <div className="rounded-2xl p-5" style={{ border: verifStyle.border, background: verifStyle.background }}>
           <p className="text-sm font-medium" style={{ color: verifStyle.labelColor }}>Verification</p>
           <p className="mt-3 text-3xl font-bold" style={{ color: verifStyle.valueColor }}>
@@ -117,10 +131,7 @@ export default function ServersSection() {
                 description={`Membres : ${server.members} — Region : ${server.region} — Categorie : ${server.category}`}
                 leading={getCategoryIcon(server.category)}
                 meta={
-                  <span
-                    className="rounded-full px-3 py-1 text-sm font-medium"
-                    style={getStatusStyle(server.status)}
-                  >
+                  <span className="rounded-full px-3 py-1 text-sm font-medium" style={getStatusStyle(server.status)}>
                     {server.status}
                   </span>
                 }

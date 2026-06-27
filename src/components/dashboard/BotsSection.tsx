@@ -15,56 +15,25 @@ type Bot = {
 
 function getStatusStyle(status: string) {
   if (status === "En ligne") {
-    return {
-      border: "1px solid rgba(16, 185, 129, 0.45)",
-      background: "rgba(16, 185, 129, 0.14)",
-      color: "#86efac",
-    };
+    return { border: "1px solid rgba(16, 185, 129, 0.45)", background: "rgba(16, 185, 129, 0.14)", color: "#86efac" };
   }
   if (status === "Maintenance") {
-    return {
-      border: "1px solid rgba(245, 158, 11, 0.5)",
-      background: "rgba(245, 158, 11, 0.18)",
-      color: "#fde68a",
-    };
+    return { border: "1px solid rgba(245, 158, 11, 0.5)", background: "rgba(245, 158, 11, 0.18)", color: "#fde68a" };
   }
   if (status === "Hors ligne") {
-    return {
-      border: "1px solid rgba(239, 68, 68, 0.5)",
-      background: "rgba(239, 68, 68, 0.18)",
-      color: "#fca5a5",
-    };
+    return { border: "1px solid rgba(239, 68, 68, 0.5)", background: "rgba(239, 68, 68, 0.18)", color: "#fca5a5" };
   }
-  return {
-    border: "1px solid rgba(63, 63, 70, 1)",
-    background: "rgba(24, 24, 27, 1)",
-    color: "#d4d4d8",
-  };
+  return { border: "1px solid rgba(63, 63, 70, 1)", background: "rgba(24, 24, 27, 1)", color: "#d4d4d8" };
 }
 
 function getSummaryStyle(kind: "online" | "maintenance" | "offline") {
   if (kind === "online") {
-    return {
-      border: "1px solid rgba(16, 185, 129, 0.35)",
-      background: "rgba(16, 185, 129, 0.08)",
-      labelColor: "#bbf7d0",
-      valueColor: "#34d399",
-    };
+    return { border: "1px solid rgba(16, 185, 129, 0.35)", background: "rgba(16, 185, 129, 0.08)", labelColor: "#bbf7d0", valueColor: "#34d399" };
   }
   if (kind === "maintenance") {
-    return {
-      border: "1px solid rgba(245, 158, 11, 0.4)",
-      background: "rgba(245, 158, 11, 0.12)",
-      labelColor: "#fde68a",
-      valueColor: "#fbbf24",
-    };
+    return { border: "1px solid rgba(245, 158, 11, 0.4)", background: "rgba(245, 158, 11, 0.12)", labelColor: "#fde68a", valueColor: "#fbbf24" };
   }
-  return {
-    border: "1px solid rgba(239, 68, 68, 0.4)",
-    background: "rgba(239, 68, 68, 0.12)",
-    labelColor: "#fecaca",
-    valueColor: "#f87171",
-  };
+  return { border: "1px solid rgba(239, 68, 68, 0.4)", background: "rgba(239, 68, 68, 0.12)", labelColor: "#fecaca", valueColor: "#f87171" };
 }
 
 function getBotIcon(type: string) {
@@ -88,7 +57,19 @@ export default function BotsSection() {
       if (data) setBots(data);
       setLoading(false);
     }
+
     fetchBots();
+
+    const channel = supabase
+      .channel("bots-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "bots" }, () => {
+        fetchBots();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const onlineCount = bots.filter((b) => b.status === "En ligne").length;
@@ -104,19 +85,18 @@ export default function BotsSection() {
       <Panel>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-widest text-zinc-500">
-              Gestion
-            </p>
-            <h2 className="mt-2 text-2xl font-semibold text-white">
-              Vos bots
-            </h2>
+            <p className="text-sm uppercase tracking-widest text-zinc-500">Gestion</p>
+            <h2 className="mt-2 text-2xl font-semibold text-white">Vos bots</h2>
             <p className="mt-3 max-w-2xl text-zinc-400">
               Cette section affiche une premiere vue d'ensemble de vos bots avec
               leur statut, leur role principal et leur serveur de reference.
             </p>
           </div>
-
-          <div className="rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-300">
+          <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-300">
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{ background: "rgba(16, 185, 129, 0.9)", boxShadow: "0 0 6px rgba(16, 185, 129, 0.6)" }}
+            />
             {loading ? "..." : `${bots.length} bots suivis`}
           </div>
         </div>
@@ -129,14 +109,12 @@ export default function BotsSection() {
             {loading ? "..." : onlineCount}
           </p>
         </div>
-
         <div className="rounded-2xl p-5" style={{ border: maintenanceStyle.border, background: maintenanceStyle.background }}>
           <p className="text-sm font-medium" style={{ color: maintenanceStyle.labelColor }}>Maintenance</p>
           <p className="mt-3 text-3xl font-bold" style={{ color: maintenanceStyle.valueColor }}>
             {loading ? "..." : maintenanceCount}
           </p>
         </div>
-
         <div className="rounded-2xl p-5" style={{ border: offlineStyle.border, background: offlineStyle.background }}>
           <p className="text-sm font-medium" style={{ color: offlineStyle.labelColor }}>Hors ligne</p>
           <p className="mt-3 text-3xl font-bold" style={{ color: offlineStyle.valueColor }}>
@@ -161,10 +139,7 @@ export default function BotsSection() {
                     <span className="rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1 text-sm text-zinc-300">
                       {bot.type}
                     </span>
-                    <span
-                      className="rounded-full px-3 py-1 text-sm font-medium"
-                      style={getStatusStyle(bot.status)}
-                    >
+                    <span className="rounded-full px-3 py-1 text-sm font-medium" style={getStatusStyle(bot.status)}>
                       {bot.status}
                     </span>
                   </>

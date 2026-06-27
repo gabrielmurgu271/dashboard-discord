@@ -54,7 +54,19 @@ export default function SettingsSection() {
       if (data) setSettings(data);
       setLoading(false);
     }
+
     fetchSettings();
+
+    const channel = supabase
+      .channel("settings-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "settings" }, () => {
+        fetchSettings();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const activeCount = settings.filter((s) => s.value === "Active").length;
@@ -76,7 +88,11 @@ export default function SettingsSection() {
               Cette section regroupe les principaux reglages du dashboard.
             </p>
           </div>
-          <div className="rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-300">
+          <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-300">
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{ background: "rgba(16, 185, 129, 0.9)", boxShadow: "0 0 6px rgba(16, 185, 129, 0.6)" }}
+            />
             {loading ? "..." : `${settings.length} reglages visibles`}
           </div>
         </div>
@@ -89,14 +105,12 @@ export default function SettingsSection() {
             {loading ? "..." : activeCount}
           </p>
         </div>
-
         <div className="rounded-2xl p-5" style={{ border: partielStyle.border, background: partielStyle.background }}>
           <p className="text-sm font-medium" style={{ color: partielStyle.labelColor }}>Partiels</p>
           <p className="mt-3 text-3xl font-bold" style={{ color: partielStyle.valueColor }}>
             {loading ? "..." : partielCount}
           </p>
         </div>
-
         <div className="rounded-2xl p-5" style={{ border: planifieStyle.border, background: planifieStyle.background }}>
           <p className="text-sm font-medium" style={{ color: planifieStyle.labelColor }}>Planifies</p>
           <p className="mt-3 text-3xl font-bold" style={{ color: planifieStyle.valueColor }}>
@@ -117,10 +131,7 @@ export default function SettingsSection() {
                 description={`${setting.description} — Categorie : ${setting.category}`}
                 leading={getCategoryIcon(setting.category)}
                 meta={
-                  <span
-                    className="rounded-full px-3 py-1 text-sm font-medium"
-                    style={getValueStyle(setting.value)}
-                  >
+                  <span className="rounded-full px-3 py-1 text-sm font-medium" style={getValueStyle(setting.value)}>
                     {setting.value}
                   </span>
                 }
