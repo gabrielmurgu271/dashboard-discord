@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import GuildDetail from "@/components/dashboard/GuildDetail";
 import Panel from "@/components/shared/Panel";
 import { supabase } from "@/lib/supabase";
 
@@ -11,7 +12,6 @@ type DiscordGuild = {
   owner: boolean;
   memberCount: number;
   onlineCount: number;
-  region: string;
 };
 
 type Server = {
@@ -74,6 +74,7 @@ export default function ServersSection() {
   const [showForm, setShowForm] = useState(false);
   const [newServer, setNewServer] = useState<NewServer>(defaultNewServer);
   const [saving, setSaving] = useState(false);
+  const [selectedGuild, setSelectedGuild] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     async function fetchServers() {
@@ -128,6 +129,16 @@ export default function ServersSection() {
     await supabase.from("servers").delete().eq("id", id);
   }
 
+  if (selectedGuild) {
+    return (
+      <GuildDetail
+        guildId={selectedGuild.id}
+        guildName={selectedGuild.name}
+        onClose={() => setSelectedGuild(null)}
+      />
+    );
+  }
+
   const connecteCount = servers.filter((s) => s.status === "Connecte").length;
   const syncCount = servers.filter((s) => s.status === "Synchronisation").length;
   const verifCount = servers.filter((s) => s.status === "Verification").length;
@@ -141,14 +152,10 @@ export default function ServersSection() {
       <Panel>
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-widest text-zinc-500">
-              Discord
-            </p>
-            <h2 className="mt-2 text-2xl font-bold text-white">
-              Serveurs Discord reels
-            </h2>
+            <p className="text-xs uppercase tracking-widest text-zinc-500">Discord</p>
+            <h2 className="mt-2 text-2xl font-bold text-white">Serveurs Discord reels</h2>
             <p className="mt-2 text-sm text-zinc-400">
-              Serveurs ou votre bot est actuellement present.
+              Cliquez sur un serveur pour voir ses details.
             </p>
           </div>
 
@@ -171,54 +178,57 @@ export default function ServersSection() {
         ) : (
           <div className="mt-6 space-y-3">
             {discordGuilds.map((guild) => (
-              <div
+              <button
                 key={guild.id}
-                className="flex items-center gap-4 rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4"
+                onClick={() => setSelectedGuild({ id: guild.id, name: guild.name })}
+                className="w-full text-left"
               >
-                {guild.icon ? (
-                  <img
-                    src={guild.icon}
-                    alt={guild.name}
-                    className="h-10 w-10 rounded-full border border-zinc-700"
-                  />
-                ) : (
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-700 bg-zinc-800 text-sm font-bold text-zinc-300">
-                    {guild.name.charAt(0)}
+                <div className="flex items-center gap-4 rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4 transition hover:border-zinc-600 hover:bg-zinc-900">
+                  {guild.icon ? (
+                    <img
+                      src={guild.icon}
+                      alt={guild.name}
+                      className="h-10 w-10 rounded-full border border-zinc-700"
+                    />
+                  ) : (
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-700 bg-zinc-800 text-sm font-bold text-zinc-300">
+                      {guild.name.charAt(0)}
+                    </div>
+                  )}
+
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-white">{guild.name}</p>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      {guild.memberCount} membres · {guild.onlineCount} en ligne
+                    </p>
                   </div>
-                )}
 
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-white">{guild.name}</p>
-                  <p className="mt-1 text-xs text-zinc-500">
-                    {guild.memberCount} membres · {guild.onlineCount} en ligne
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {guild.owner && (
+                  <div className="flex items-center gap-2">
+                    {guild.owner && (
+                      <span
+                        className="rounded-full px-3 py-1 text-xs font-medium"
+                        style={{
+                          border: "1px solid rgba(245, 158, 11, 0.5)",
+                          background: "rgba(245, 158, 11, 0.18)",
+                          color: "#fde68a",
+                        }}
+                      >
+                        Proprietaire
+                      </span>
+                    )}
                     <span
                       className="rounded-full px-3 py-1 text-xs font-medium"
                       style={{
-                        border: "1px solid rgba(245, 158, 11, 0.5)",
-                        background: "rgba(245, 158, 11, 0.18)",
-                        color: "#fde68a",
+                        border: "1px solid rgba(16, 185, 129, 0.45)",
+                        background: "rgba(16, 185, 129, 0.14)",
+                        color: "#86efac",
                       }}
                     >
-                      Proprietaire
+                      Voir →
                     </span>
-                  )}
-                  <span
-                    className="rounded-full px-3 py-1 text-xs font-medium"
-                    style={{
-                      border: "1px solid rgba(16, 185, 129, 0.45)",
-                      background: "rgba(16, 185, 129, 0.14)",
-                      color: "#86efac",
-                    }}
-                  >
-                    Connecte
-                  </span>
+                  </div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         )}
