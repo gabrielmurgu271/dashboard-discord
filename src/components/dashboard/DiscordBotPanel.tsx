@@ -32,7 +32,11 @@ export default function DiscordBotPanel() {
   useEffect(() => {
     async function fetchDiscordData() {
       try {
-        const res = await fetch("/api/discord/bot");
+        const res = await fetch("/api/discord/bot", {
+          headers: {
+            "x-api-secret": process.env.NEXT_PUBLIC_API_SECRET_KEY ?? "",
+          },
+        });
         const json = await res.json();
         if (json.error) {
           setError(true);

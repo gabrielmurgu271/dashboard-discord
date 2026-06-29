@@ -1,6 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const secret = req.headers.get("x-api-secret");
+
+  if (secret !== process.env.API_SECRET_KEY) {
+    return NextResponse.json({ error: "Non autorise" }, { status: 401 });
+  }
+
   const token = process.env.DISCORD_BOT_TOKEN;
 
   if (!token) {
@@ -34,7 +40,7 @@ export async function GET() {
         avatar,
         verified: user.verified,
       },
-      guilds: guilds.map((g: { id: string; name: string; icon: string | null; owner: boolean; permissions: string }) => ({
+      guilds: guilds.map((g: { id: string; name: string; icon: string | null; owner: boolean }) => ({
         id: g.id,
         name: g.name,
         icon: g.icon
