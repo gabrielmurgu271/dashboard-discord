@@ -1,9 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import InfoRow from "@/components/shared/InfoRow";
 import Panel from "@/components/shared/Panel";
 import { supabase } from "@/lib/supabase";
+
+type DiscordGuild = {
+  id: string;
+  name: string;
+  icon: string | null;
+  owner: boolean;
+  memberCount: number;
+  onlineCount: number;
+  region: string;
+};
 
 type Server = {
   id: string;
@@ -59,7 +68,9 @@ const defaultNewServer: NewServer = {
 
 export default function ServersSection() {
   const [servers, setServers] = useState<Server[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [discordGuilds, setDiscordGuilds] = useState<DiscordGuild[]>([]);
+  const [loadingSupabase, setLoadingSupabase] = useState(true);
+  const [loadingDiscord, setLoadingDiscord] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [newServer, setNewServer] = useState<NewServer>(defaultNewServer);
   const [saving, setSaving] = useState(false);
@@ -71,10 +82,26 @@ export default function ServersSection() {
         .select("*")
         .order("created_at", { ascending: true });
       if (data) setServers(data);
-      setLoading(false);
+      setLoadingSupabase(false);
+    }
+
+    async function fetchDiscordGuilds() {
+      try {
+        const res = await fetch("/api/discord/guilds", {
+          headers: {
+            "x-api-secret": process.env.NEXT_PUBLIC_API_SECRET_KEY ?? "",
+          },
+        });
+        const json = await res.json();
+        if (json.guilds) setDiscordGuilds(json.guilds);
+      } catch {
+        console.error("Erreur Discord guilds");
+      }
+      setLoadingDiscord(false);
     }
 
     fetchServers();
+    fetchDiscordGuilds();
 
     const channel = supabase
       .channel("servers-realtime")
@@ -112,19 +139,105 @@ export default function ServersSection() {
   return (
     <div className="grid gap-6">
       <Panel>
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-widest text-zinc-500">
+              Discord
+            </p>
+            <h2 className="mt-2 text-2xl font-bold text-white">
+              Serveurs Discord reels
+            </h2>
+            <p className="mt-2 text-sm text-zinc-400">
+              Serveurs ou votre bot est actuellement present.
+            </p>
+          </div>
+
+          <div
+            className="rounded-2xl px-4 py-3 text-center"
+            style={{
+              border: "1px solid rgba(16, 185, 129, 0.45)",
+              background: "rgba(16, 185, 129, 0.14)",
+            }}
+          >
+            <p className="text-xs" style={{ color: "#bbf7d0" }}>Serveurs actifs</p>
+            <p className="mt-1 text-2xl font-bold" style={{ color: "#34d399" }}>
+              {loadingDiscord ? "..." : discordGuilds.length}
+            </p>
+          </div>
+        </div>
+
+        {loadingDiscord ? (
+          <p className="mt-6 text-sm text-zinc-500">Chargement depuis Discord...</p>
+        ) : (
+          <div className="mt-6 space-y-3">
+            {discordGuilds.map((guild) => (
+              <div
+                key={guild.id}
+                className="flex items-center gap-4 rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4"
+              >
+                {guild.icon ? (
+                  <img
+                    src={guild.icon}
+                    alt={guild.name}
+                    className="h-10 w-10 rounded-full border border-zinc-700"
+                  />
+                ) : (
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-700 bg-zinc-800 text-sm font-bold text-zinc-300">
+                    {guild.name.charAt(0)}
+                  </div>
+                )}
+
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-white">{guild.name}</p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    {guild.memberCount} membres · {guild.onlineCount} en ligne
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {guild.owner && (
+                    <span
+                      className="rounded-full px-3 py-1 text-xs font-medium"
+                      style={{
+                        border: "1px solid rgba(245, 158, 11, 0.5)",
+                        background: "rgba(245, 158, 11, 0.18)",
+                        color: "#fde68a",
+                      }}
+                    >
+                      Proprietaire
+                    </span>
+                  )}
+                  <span
+                    className="rounded-full px-3 py-1 text-xs font-medium"
+                    style={{
+                      border: "1px solid rgba(16, 185, 129, 0.45)",
+                      background: "rgba(16, 185, 129, 0.14)",
+                      color: "#86efac",
+                    }}
+                  >
+                    Connecte
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Panel>
+
+      <Panel>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-sm uppercase tracking-widest text-zinc-500">Infrastructure</p>
-            <h2 className="mt-2 text-2xl font-semibold text-white">Serveurs connectes</h2>
+            <h2 className="mt-2 text-2xl font-semibold text-white">Serveurs suivis</h2>
             <p className="mt-3 max-w-2xl text-zinc-400">
-              Cette section presente les serveurs suivis par le dashboard.
+              Serveurs enregistres manuellement dans le dashboard.
             </p>
           </div>
 
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-300">
               <span className="h-2 w-2 rounded-full" style={{ background: "rgba(16, 185, 129, 0.9)", boxShadow: "0 0 6px rgba(16, 185, 129, 0.6)" }} />
-              {loading ? "..." : `${servers.length} serveurs suivis`}
+              {loadingSupabase ? "..." : `${servers.length} serveurs`}
             </div>
 
             <button
@@ -142,7 +255,7 @@ export default function ServersSection() {
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label className="mb-2 block text-xs text-zinc-400">Nom du serveur</label>
+                <label className="mb-2 block text-xs text-zinc-400">Nom</label>
                 <input
                   type="text"
                   value={newServer.name}
@@ -153,13 +266,12 @@ export default function ServersSection() {
               </div>
 
               <div>
-                <label className="mb-2 block text-xs text-zinc-400">Nombre de membres</label>
+                <label className="mb-2 block text-xs text-zinc-400">Membres</label>
                 <input
                   type="number"
                   value={newServer.members}
                   onChange={(e) => setNewServer({ ...newServer, members: parseInt(e.target.value) || 0 })}
-                  placeholder="Ex: 1284"
-                  className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none focus:border-zinc-500"
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-zinc-500"
                 />
               </div>
 
@@ -220,36 +332,45 @@ export default function ServersSection() {
         <div className="rounded-2xl p-5" style={{ border: connecteStyle.border, background: connecteStyle.background }}>
           <p className="text-sm font-medium" style={{ color: connecteStyle.labelColor }}>Connectes</p>
           <p className="mt-3 text-3xl font-bold" style={{ color: connecteStyle.valueColor }}>
-            {loading ? "..." : connecteCount}
+            {loadingSupabase ? "..." : connecteCount}
           </p>
         </div>
         <div className="rounded-2xl p-5" style={{ border: syncStyle.border, background: syncStyle.background }}>
           <p className="text-sm font-medium" style={{ color: syncStyle.labelColor }}>Synchronisation</p>
           <p className="mt-3 text-3xl font-bold" style={{ color: syncStyle.valueColor }}>
-            {loading ? "..." : syncCount}
+            {loadingSupabase ? "..." : syncCount}
           </p>
         </div>
         <div className="rounded-2xl p-5" style={{ border: verifStyle.border, background: verifStyle.background }}>
           <p className="text-sm font-medium" style={{ color: verifStyle.labelColor }}>Verification</p>
           <p className="mt-3 text-3xl font-bold" style={{ color: verifStyle.valueColor }}>
-            {loading ? "..." : verifCount}
+            {loadingSupabase ? "..." : verifCount}
           </p>
         </div>
       </div>
 
       <Panel title="Liste des serveurs">
-        {loading ? (
+        {loadingSupabase ? (
           <p className="text-sm text-zinc-500">Chargement...</p>
         ) : (
           <div className="space-y-4">
             {servers.map((server) => (
               <div key={server.id} className="group relative">
-                <InfoRow
-                  title={server.name}
-                  description={`Membres : ${server.members} — Region : ${server.region} — Categorie : ${server.category}`}
-                  leading={getCategoryIcon(server.category)}
-                  meta={
-                    <>
+                <div className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-5">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex min-w-0 items-start gap-4">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-zinc-800 bg-zinc-900 text-xl">
+                        {getCategoryIcon(server.category)}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-lg font-semibold text-white">{server.name}</h3>
+                        <p className="mt-2 text-sm text-zinc-400">
+                          {server.members} membres · {server.region} · {server.category}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3">
                       <span className="rounded-full px-3 py-1 text-sm font-medium" style={getStatusStyle(server.status)}>
                         {server.status}
                       </span>
@@ -259,9 +380,9 @@ export default function ServersSection() {
                       >
                         Supprimer
                       </button>
-                    </>
-                  }
-                />
+                    </div>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
