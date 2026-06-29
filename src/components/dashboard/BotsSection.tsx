@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import DiscordBotPanel from "@/components/dashboard/DiscordBotPanel";
 import InfoRow from "@/components/shared/InfoRow";
 import Panel from "@/components/shared/Panel";
 import { supabase } from "@/lib/supabase";
@@ -112,6 +113,8 @@ export default function BotsSection() {
 
   return (
     <div className="grid gap-6">
+      <DiscordBotPanel />
+
       <Panel>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
